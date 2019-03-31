@@ -1,0 +1,13 @@
+* FSFOA
+Feature selection using Forest Optimization Algorithm - Python code
+
+Doi: http://dx.doi.org/10.1016/j.patcog.2016.05.012
+
+* Article Abstract
+Feature selection as a combinatorial optimization problem is an important preprocessing step in data mining; which improves the performance of the learning algorithms with the help of removing the irrelevant and redundant features. As evolutionary algorithms are reported to be suitable for optimization tasks, so Forest Optimization Algorithm (FOA) – which is initially  proposed for continuous search problems – is adapted to be used for feature selection as a discrete search space problem. As the result, Feature Selection using Forest Optimization Algorithm (FSFOA) is proposed in this article in order to select the more informative features from the datasets. The proposed FSFOA is validated on several real world datasets and it is compared with some other methods including HGAFS, PSO and SVM-FuzCoc. The results of the experiments show that, FSFOA can improve the classification accuracy of classifiers in some selected datasets. Also, we have compared the dimensionality reduction of the proposed FSFOA with other available methods.
+
+* Dataset
+Dataset is from [[https://archive.ics.uci.edu/ml/datasets.html][UCI]].
+
+* Impression
+My result is really different from what describes in the paper. Maybe due to the different package? LOL
