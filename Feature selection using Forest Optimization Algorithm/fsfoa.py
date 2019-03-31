@@ -283,7 +283,7 @@ class Evaluation(object):
 
 if __name__ == '__main__':
     start_time = time.time()
-    file_path = "E:\sourcecode\AI\dataset\low\ionosphere.csv"
+    file_path = ".\dataset\low\ionosphere.csv"
     forest = Forest(1, file_path, 100, 50, 15, 0.05)
     print(forest.evolution())
     print("--- %s seconds ---" % (time.time() - start_time))
