@@ -3,7 +3,7 @@ import math
 import random
 from operator import itemgetter
 import numpy as np
-# import .evaluation
+# ----------- import .evaluation --------------------------
 from enum import Enum, unique
 from sklearn import svm
 from sklearn import tree as Tree
@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split  # 分割数据模块
 
 
 class Forest (object):
-    def __init__(self, eval_function, file_path, max_iterations,
+    def __init__(self, eval_function, method, file_path, max_iterations,
                  area_limit, max_life_time, transfer_rate):
         """
         This function gets the evaluation function, the ranges of the variables,
@@ -28,8 +28,10 @@ class Forest (object):
 
         Parameters
         ----------
-        eval_function:
+        eval_function: EvaluationFunction
             Evaluation function handler
+        method: ValidationMethod
+            validation method
         file_path: str
             file path to the dataset
         dim: int
@@ -54,6 +56,8 @@ class Forest (object):
         self.dataset = np.genfromtxt(file_path, delimiter=',')
         # The dimension of the problem domain
         self.dimension = self.dataset.shape[1] - 1
+        self.method = method
+        self.eval_function = eval_function
 
         if self.dimension < 5:
             self.LSC = 1  # Local seeding changes (1/5 of the dimension)
@@ -72,7 +76,7 @@ class Forest (object):
         '''
         Invovled variables:
         tree: list
-                Age | x | x | x | x | x | x | fitness
+                Age | x | x | x | x | x | x | fitness  | dimension reduction
                 x is either 0 or 1
             index:
                 0   | 1 | 2 | . | . | . |dim| dimension+1
@@ -86,26 +90,32 @@ class Forest (object):
         # 其他 1/3 使用 K 个特征数(K 是介于 1/2 特征数和特征总数之间的随机数)
         backward_num = init_num - forward_num
 
-        forward_feature = int(self.dimension * 0.1) * \
-            [1] + (self.dimension - int(self.dimension * 0.1)) * [0]
+        forward_feature = int(self.dimension * 0.1) * [1] + \
+            (self.dimension - int(self.dimension * 0.1)) * [0]
         backward_feature_num = random.randint(
             int(self.dimension / 2), self.dimension + 1)  # 产生 K 个特征数
-        backward_feature = backward_feature_num * \
-            [1] + (self.dimension - backward_feature_num) * [0]
+        backward_feature = backward_feature_num * [1] + \
+            (self.dimension - backward_feature_num) * [0]
         for i in range(forward_num):
             random.shuffle(forward_feature)
             tree = [0] + forward_feature   # Set age to 0
-            fitness = self._fitness_calculator(
+            fitness = self._get_accuracy(
                 tree[1: self.dimension + 1])  # 计算每个 tree 的 fitness
+            dimension_reduction = self._get_dimension_reduction_rate(
+                tree[1: self.dimension + 1])  # 计算每个 tree 的降维率
             tree.append(fitness)
+            tree.append(dimension_reduction)
             self.forest.append(tree)
 
         for i in range(backward_num):
             random.shuffle(backward_feature)
             tree = [0] + backward_feature  # Set age to 0
-            fitness = self._fitness_calculator(
+            fitness = self._get_accuracy(
                 tree[1: self.dimension + 1])  # 计算每个 tree 的 fitness
+            dimension_reduction = self._get_dimension_reduction_rate(
+                tree[1: self.dimension + 1])  # 计算每个 tree 的降维率
             tree.append(fitness)
+            tree.append(dimension_reduction)
             self.forest.append(tree)
 
         self.best_tree = self.forest[0][:]
@@ -121,9 +131,12 @@ class Forest (object):
                 for index in selected_index:
                     # change from 0 to 1 or vice versa.
                     temp_tree[index] = 1 - temp_tree[index]
-                    fitness = self._fitness_calculator(
+                    fitness = self._get_accuracy(
                         temp_tree[1: self.dimension + 1])
+                    dimension_reduction = self._get_dimension_reduction_rate(
+                        temp_tree[1: self.dimension + 1])  # 计算每个 tree 的降维率
                     temp_tree[self.dimension + 1] = fitness
+                    temp_tree[self.dimension + 2] = dimension_reduction
                     if temp_tree[self.dimension +
                                  1] > tree[self.dimension + 1]:
                         new_trees.append(temp_tree)
@@ -135,7 +148,8 @@ class Forest (object):
         self.forest.extend(new_trees)  # Merge new trees into forest
 
     def _population_limiting(self):
-        for tree in self.forest:                 # Trees with “Age” bigger than “life time” parameter
+        # Trees with “Age” bigger than “life time” parameter
+        for tree in self.forest:
             if tree[0] > self.max_life_time:
                 self.candidate_population.append(tree)
                 self.forest.remove(tree)
@@ -146,7 +160,7 @@ class Forest (object):
             # sort the forest according to the fitness from high to low
             self.forest = sorted(
                 self.forest, key=itemgetter(
-                    self.dimension + 1), reverse=True)
+                    self.dimension + 1, self.dimension + 2), reverse=True)
             # 0~area_limit-1 : total area_limit
             self.forest = self.forest[:self.area_limit]
 
@@ -156,30 +170,62 @@ class Forest (object):
                                 len(self.candidate_population))
 
         if selected_tree_num != 0:
-            selected_trees_index = random.sample(
-                range(len(self.candidate_population)), selected_tree_num)
+            old_trees_in_candidate = [
+                self.candidate_population[i] for i in range(len(self.candidate_population))
+                if self.candidate_population[i][0] > 0]  # 候选森林中 age > 0 的树
 
-            for index in selected_trees_index:
-                temp_tree = self.candidate_population[index][:]
-                selected_variables_index = random.sample(
-                    range(1, self.dimension + 1), self.GSC)
-                for i in selected_variables_index:
-                    # The value of each selected variable will be negated
-                    # (changing from 0 to 1 or vice versa)
-                    temp_tree[i] = 1 - temp_tree[i]
-                fitness = self._fitness_calculator(
-                    temp_tree[1: self.dimension + 1])
-                temp_tree[self.dimension + 1] = fitness
-                self.forest.append(temp_tree)
+            all_trees = self.forest[:]
+            all_trees.extend(self.candidate_population)
+            new_trees_in_forest = [
+                all_trees[i] for i in range(len(self.candidate_population))
+                if all_trees[i][0] == 0]  # 所有森林中 age = 0 的树
+
+            if len(new_trees_in_forest) >= selected_tree_num:
+                # 优先在 age = 0 中的树进行 global seeding
+                # 此分支只在 age=0 中的树进行 global seeding
+                selected_trees_index = random.sample(range(len(new_trees_in_forest)), selected_tree_num)
+
+                self._global_seeding_trees(new_trees_in_forest, selected_trees_index)
+
+            else:
+                # 所有的 age = 0 的树都参与全局播种
+                # 部分 age > 0 的候选森林中树参与全局播种
+                selected_old_tree_num = selected_tree_num - len(new_trees_in_forest)
+
+                selected_old_trees_index = random.sample(
+                    range(len(old_trees_in_candidate)), selected_old_tree_num)
+
+                self._global_seeding_trees(old_trees_in_candidate,
+                                           selected_old_trees_index)
+
+                self._global_seeding_trees(new_trees_in_forest,
+                                           range(len(new_trees_in_forest)))
+
+    def _global_seeding_trees(self, selected_trees, selected_trees_index):
+        for index in selected_trees_index:
+            temp_tree = selected_trees[index][:]
+            selected_variables_index = random.sample(
+                range(1, self.dimension + 1), self.GSC)
+            for i in selected_variables_index:
+                # The value of each selected variable will be negated
+                # (changing from 0 to 1 or vice versa)
+                temp_tree[i] = 1 - temp_tree[i]
+            fitness = self._get_accuracy(
+                temp_tree[1: self.dimension + 1])
+            dimension_reduction = self._get_dimension_reduction_rate(
+                temp_tree[1: self.dimension + 1])  # 计算每个 tree 的降维率
+            temp_tree[self.dimension + 1] = fitness
+            temp_tree[self.dimension + 2] = dimension_reduction
+            self.forest.append(temp_tree)
 
     def _update_best_tree(self):
         # sort the forest according to the fitness from high to low
-        self.forest = sorted(
-            self.forest, key=itemgetter(
-                self.dimension + 1), reverse=True)
+        self.forest = sorted(self.forest,
+                             key=itemgetter(self.dimension + 1, self.dimension + 2),
+                             reverse=True)
         if (self.forest[0][self.dimension + 1] > self.best_tree[self.dimension + 1]) or \
            ((self.forest[0][self.dimension + 1] == self.best_tree[self.dimension + 1]) and
-                (Evaluation.get_dimension_reduction_rate(self.forest[0]) > Evaluation.get_dimension_reduction_rate(self.best_tree))):
+           (self.forest[0][self.dimension + 2] > self.best_tree[self.dimension + 2])):
             # 如果森林里最好的树比记录的最好的树优，更新记录
             # 或者，准确度相同情况下，森林里最好的树降维比率更大
             self.forest[0][0] = 0   # set best tree's age to 0
@@ -191,7 +237,7 @@ class Forest (object):
         print("-------self.best_tree-----------")
         print(self.best_tree)
 
-    def _fitness_calculator(self, feature_subset):
+    def _get_accuracy(self, feature_subset):
         '''
         Returns
         ------------------------
@@ -199,9 +245,10 @@ class Forest (object):
             classification accuracy
         '''
 
-        fitness = Evaluation.k_nearest_neighbor(
-            1, feature_subset, self.dataset, ValidationMethod.SEVEN_THREE)
-#        fitness = Evaluation.svm_rbf(feature_subset, self.dataset, ValidationMethod.SEVEN_THREE)
+        fitness = Evaluation.get_accuracy(self.eval_function,
+                                          feature_subset,
+                                          self.dataset,
+                                          self.method)
 
 # print("-------feature_subset---------")
 # print(feature_subset)
@@ -209,6 +256,9 @@ class Forest (object):
 # print(fitness)
 
         return fitness
+
+    def _get_dimension_reduction_rate(self, feature_subset):
+        return Evaluation.get_dimension_reduction_rate(feature_subset)
 
     def evolution(self):
         '''
@@ -228,7 +278,7 @@ class Forest (object):
         return self.best_tree
 
 
-# ------------------------------------------------
+# ------------- Evaluation. py --------------------------------
 @unique               # 该装饰器可以帮助我们检查保证没有重复值
 class ValidationMethod(Enum):
     TEN_FOLD = 1      # 10-fold
@@ -236,9 +286,18 @@ class ValidationMethod(Enum):
     SEVEN_THREE = 3   # 70%-30%
 
 
+@unique
+class EvaluationFunction(Enum):
+    ONE_NN = 1      # 1-NN
+    THREE_NN = 2
+    FIVE_NN = 3
+    SVM_RBF = 4
+    C45_CART = 5
+
+
 class Evaluation(object):
     @staticmethod
-    def k_nearest_neighbor(k, feature_subset, dataset, method):
+    def _k_nearest_neighbor(k, X, y, method):
         """
         Parameters
         ----------
@@ -256,25 +315,19 @@ class Evaluation(object):
         fitness: float
             classification accuracy
         """
-        X, y = Evaluation._getXy(feature_subset, dataset)
-
         knn = KNeighborsClassifier(n_neighbors=k)  # 建立模型
 
         return Evaluation._get_accuracy(knn, X, y, method)
 
     @staticmethod
-    def svm_rbf(feature_subset, dataset, method):
-        X, y = Evaluation._getXy(feature_subset, dataset)
-
+    def _svm_rbf(X, y, method):
         clf = svm.SVC(gamma='scale', kernel='rbf')
 
         return Evaluation._get_accuracy(clf, X, y, method)
 
     @staticmethod
-    def cff_cart(feature_subset, dataset, method):
-        X, y = Evaluation._getXy(feature_subset, dataset)
-
-        clf = Tree.DecisionTreeRegressor()
+    def _cff_cart(X, y, method):
+        clf = Tree.DecisionTreeClassifier()
 
         return Evaluation._get_accuracy(clf, X, y, method)
 
@@ -282,8 +335,8 @@ class Evaluation(object):
     def _getXy(feature_subset, dataset):
         columns = dataset.shape[1]
         cols_to_use = [
-            i for i in range(
-                len(feature_subset)) if feature_subset[i] == 1]
+            i for i in range(len(feature_subset))
+            if feature_subset[i] == 1]
 
         X = dataset[:, cols_to_use]
         y = dataset[:, columns - 1]
@@ -324,11 +377,11 @@ class Evaluation(object):
             accuracy = clf.score(X_test, y_test)
 
         elif method == ValidationMethod.TEN_FOLD:
-            accuracy = cross_val_accuracy(
+            accuracy = cross_val_score(
                 clf, X, y, cv=10, scoring='accuracy').mean()
 
         elif method == ValidationMethod.TWO_FOLD:
-            accuracy = cross_val_accuracy(
+            accuracy = cross_val_score(
                 clf, X, y, cv=2, scoring='accuracy').mean()
 
         return accuracy
@@ -336,16 +389,36 @@ class Evaluation(object):
     @staticmethod
     def get_dimension_reduction_rate(feature_subset):
         cols_to_use = [
-            i for i in range(
-                len(feature_subset)) if feature_subset[i] == 1]
+            i for i in range(len(feature_subset))
+            if feature_subset[i] == 1]
         selected_feature_num = len(cols_to_use)
         all_feature_num = len(feature_subset)
         return 1 - (selected_feature_num / all_feature_num)
+
+    @staticmethod
+    def get_accuracy(eval_function, feature_subset, dataset, method):
+        X, y = Evaluation._getXy(feature_subset, dataset)
+
+        accuracy = 0.0
+        if eval_function == EvaluationFunction.ONE_NN:
+            accuracy = Evaluation._k_nearest_neighbor(1, X, y, method)
+        elif eval_function == EvaluationFunction.THREE_NN:
+            accuracy = Evaluation._k_nearest_neighbor(3, X, y, method)
+        elif eval_function == EvaluationFunction.FIVE_NN:
+            accuracy = Evaluation._k_nearest_neighbor(5, X, y, method)
+        elif eval_function == EvaluationFunction.SVM_RBF:
+            accuracy = Evaluation._svm_rbf(X, y, method)
+        elif eval_function == EvaluationFunction.C45_CART:
+            accuracy = Evaluation._cff_cart(X, y, method)
+
+        return accuracy
+# ------------- Evaluation. py --------------------------------
 
 
 if __name__ == '__main__':
     start_time = time.time()
     file_path = r".\dataset\low\ionosphere.csv"
-    forest = Forest(1, file_path, 100, 50, 15, 0.05)
+    forest = Forest(EvaluationFunction.ONE_NN, ValidationMethod.SEVEN_THREE,
+                    file_path, 100, 50, 15, 0.05)
     print(forest.evolution())
     print("--- %s seconds ---" % (time.time() - start_time))

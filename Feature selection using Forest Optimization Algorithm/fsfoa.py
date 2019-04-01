@@ -9,7 +9,7 @@ from sklearn import svm
 from sklearn import tree as Tree
 # K最近邻(kNN，k-NearestNeighbor)分类算法
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import cross_val_score  # K折交叉验证模块
+from sklearn.model_selection import cross_val_score   # K折交叉验证模块
 from sklearn.model_selection import train_test_split  # 分割数据模块
 
 
@@ -85,7 +85,7 @@ class Forest (object):
             # 0 and 1
             tree = [random.randint(0, 1) for _ in range(self.dimension + 1)]
             tree[0] = 0            # Set age to 0
-            fitness = self._fitness_calculator(
+            fitness = self._accuracy_calculator(
                 tree[1: self.dimension + 1])  # 计算每个 tree 的 fitness
             tree.append(fitness)
             self.forest.append(tree)
@@ -103,7 +103,7 @@ class Forest (object):
                     temp_tree = tree[:]
                     # change from 0 to 1 or vice versa.
                     temp_tree[index] = 1 - temp_tree[index]
-                    fitness = self._fitness_calculator(
+                    fitness = self._accuracy_calculator(
                         temp_tree[1: self.dimension + 1])
                     temp_tree[self.dimension + 1] = fitness
                     new_trees.append(temp_tree)
@@ -147,7 +147,7 @@ class Forest (object):
                     # The value of each selected variable will be negated
                     # (changing from 0 to 1 or vice versa)
                     temp_tree[i] = 1 - temp_tree[i]
-                fitness = self._fitness_calculator(
+                fitness = self._accuracy_calculator(
                     temp_tree[1: self.dimension + 1])
                 temp_tree[self.dimension + 1] = fitness
                 self.forest.append(temp_tree)
@@ -169,7 +169,7 @@ class Forest (object):
         print("-------self.best_tree-----------")
         print(self.best_tree)
 
-    def _fitness_calculator(self, feature_subset):
+    def _accuracy_calculator(self, feature_subset):
         '''
         Returns
         ------------------------
