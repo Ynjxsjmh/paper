@@ -163,6 +163,7 @@ class Forest (object):
                     self.dimension + 1, self.dimension + 2), reverse=True)
             # 0~area_limit-1 : total area_limit
             self.forest = self.forest[:self.area_limit]
+            self.candidate_population.extend(self.forest[self.area_limit:])
 
     def _global_seeding(self):
         # 有多少颗树进行 global seeding
