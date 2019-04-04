@@ -67,6 +67,7 @@ class Forest (object):
         self.forest = []
         self.candidate_population = []
         self.best_tree = []
+        self.id = 0
 
     def _initialize_forest(self):
         '''
@@ -79,52 +80,41 @@ class Forest (object):
 
         self.best_tree: list
         '''
-        init_num = self.area_limit
+
+        init_num = 0
 
         if self.dimension < 5:
-            high = 1    #
-            middle = 1
-            low = 1
+            init_num = 1    #
         else:
             # 20 percent (not optimal) of the dimension used in initial
-            high = math.floor((2 * self.dimension) / 10)
-            middle = math.floor((2 * self.dimension) / 10)
-            low = math.floor((2 * self.dimension) / 10)
+            init_num = math.floor((2 * self.dimension) / 10)
 
-        # 森林中 2/3 的树使用 10% 的特征数
-        forward_num = int(2 * init_num / 3)
-        # 其他 1/3 使用 K 个特征数(K 是介于 1/2 特征数和特征总数之间的随机数)
-        backward_num = init_num - forward_num
+        high_feature = int(self.dimension * 3 / 4) * [1] + \
+            (self.dimension - int(self.dimension * 3 / 4)) * [0]          # 3/4
+        mid_feature = int(self.dimension * 1 / 2) * [1] + \
+            (self.dimension - int(self.dimension * 1 / 2)) * [0]          # 1/2
+        low_feature = int(self.dimension * 1 / 4) * [1] + \
+            (self.dimension - int(self.dimension * 1 / 4)) * [0]          # 1/4
 
-        forward_feature = int(self.dimension * 0.1) * \
-            [1] + (self.dimension - int(self.dimension * 0.1)) * [0]
-        backward_feature_num = random.randint(
-            int(self.dimension / 2), self.dimension + 1)  # 产生 K 个特征数
-        backward_feature = backward_feature_num * \
-            [1] + (self.dimension - backward_feature_num) * [0]
-        for i in range(forward_num):
-            random.shuffle(forward_feature)
-            tree = [0] + forward_feature   # Set age to 0
-            fitness = self._get_accuracy(
-                tree[1: self.dimension + 1])  # 计算每个 tree 的 fitness
-            dimension_reduction = self._get_dimension_reduction_rate(
-                tree[1: self.dimension + 1])  # 计算每个 tree 的降维率
-            tree.append(fitness)
-            tree.append(dimension_reduction)
-            self.forest.append(tree)
-
-        for i in range(backward_num):
-            random.shuffle(backward_feature)
-            tree = [0] + backward_feature  # Set age to 0
-            fitness = self._get_accuracy(
-                tree[1: self.dimension + 1])  # 计算每个 tree 的 fitness
-            dimension_reduction = self._get_dimension_reduction_rate(
-                tree[1: self.dimension + 1])  # 计算每个 tree 的降维率
-            tree.append(fitness)
-            tree.append(dimension_reduction)
-            self.forest.append(tree)
+        self.__init_ancestor(high_feature, init_num)
+        self.__init_ancestor(mid_feature, init_num)
+        self.__init_ancestor(low_feature, init_num)
 
         self.best_tree = self.forest[0][:]
+
+    def __init_ancestor(self, feature_subset, num):
+        for i in range(num):
+            random.shuffle(feature_subset)
+            tree = [0] + feature_subset  # Set age to 0
+            fitness = self._get_accuracy(
+                tree[1: self.dimension + 1])  # 计算每个 tree 的 fitness
+            dimension_reduction = self._get_dimension_reduction_rate(
+                tree[1: self.dimension + 1])  # 计算每个 tree 的降维率
+            tree.append(fitness)
+            tree.append(dimension_reduction)
+            tree.append(self.id)
+            self.id += 1
+            self.forest.append(tree)
 
     def _local_seeding(self):
         new_trees = []
@@ -214,13 +204,13 @@ class Forest (object):
                 # The value of each selected variable will be negated
                 # (changing from 0 to 1 or vice versa)
                 temp_tree[i] = 1 - temp_tree[i]
-            fitness = self._get_accuracy(
-                temp_tree[1: self.dimension + 1])
-            dimension_reduction = self._get_dimension_reduction_rate(
-                temp_tree[1: self.dimension + 1])  # 计算每个 tree 的降维率
-            temp_tree[self.dimension + 1] = fitness
-            temp_tree[self.dimension + 2] = dimension_reduction
-            self.forest.append(temp_tree)
+                fitness = self._get_accuracy(
+                    temp_tree[1: self.dimension + 1])
+                dimension_reduction = self._get_dimension_reduction_rate(
+                    temp_tree[1: self.dimension + 1])  # 计算每个 tree 的降维率
+                temp_tree[self.dimension + 1] = fitness
+                temp_tree[self.dimension + 2] = dimension_reduction
+                self.forest.append(temp_tree)
 
     def _update_best_tree(self):
         # sort the forest according to the fitness from high to low
@@ -229,7 +219,7 @@ class Forest (object):
                              reverse=True)
         if (self.forest[0][self.dimension + 1] > self.best_tree[self.dimension + 1]) or \
            ((self.forest[0][self.dimension + 1] == self.best_tree[self.dimension + 1]) and
-                (self.forest[0][self.dimension + 2] > self.best_tree[self.dimension + 2])):
+            (self.forest[0][self.dimension + 2] > self.best_tree[self.dimension + 2])):
             # 如果森林里最好的树比记录的最好的树优，更新记录
             # 或者，准确度相同情况下，森林里最好的树降维比率更大
             self.forest[0][0] = 0   # set best tree's age to 0
@@ -238,8 +228,8 @@ class Forest (object):
             # 此时，森林里最好的树应该就是过去记录的某颗最好的树
             self.best_tree[0] = 0
             self.forest[0] = self.best_tree[:]
-        print("-------self.best_tree-----------")
-        print(self.best_tree)
+            print("-------self.best_tree-----------")
+            print(self.best_tree)
 
     def _get_accuracy(self, feature_subset):
         '''
@@ -282,7 +272,7 @@ class Forest (object):
 
 if __name__ == '__main__':
     start_time = time.time()
-#    file_path = r"C:\Users\Administrator\Desktop\11111\dataset\low\ionosphere.csv"
+    #    file_path = r"C:\Users\Administrator\Desktop\11111\dataset\low\ionosphere.csv"
     file_path = r".\binnn\dataset\low\ionosphere.csv"
     forest = Forest(EvaluationFunction.ONE_NN, ValidationMethod.SEVEN_THREE,
                     file_path, 100, 50, 15, 0.05)
