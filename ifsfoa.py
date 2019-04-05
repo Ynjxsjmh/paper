@@ -54,6 +54,7 @@ class Forest (object):
         self.dimension = self.dataset.shape[1] - 1
         self.method = method
         self.eval_function = eval_function
+        self.past_best_trees = []
 
         if self.dimension < 5:
             self.LSC = 1  # Local seeding changes (1/5 of the dimension)
@@ -193,6 +194,8 @@ class Forest (object):
         for tree in self.candidate_population:
             if tree[0] > self.max_life_time:
                 self.candidate_population.remove(tree)
+            else:
+                tree[0] += 1
 
         # The extra trees that exceed “area limit” parameter after sorting the
         # trees according to their fitness value will be dropped
@@ -211,41 +214,23 @@ class Forest (object):
                                 len(self.candidate_population))
 
         if selected_tree_num != 0:
-            old_trees_in_candidate = [
-                self.candidate_population[i] for i in range(len(self.candidate_population))
-                if self.candidate_population[i][0] > 0]  # 候选森林中 age > 0 的树
+            selected_trees_index = random.sample(
+                range(len(self.candidate_population)), selected_tree_num)
 
-            all_trees = self.forest[:]
-            all_trees.extend(self.candidate_population)
-            new_trees_in_forest = [
-                all_trees[i] for i in range(len(self.candidate_population))
-                if all_trees[i][0] == 0]  # 所有森林中 age = 0 的树
-
-            if len(new_trees_in_forest) >= selected_tree_num:
-                # 优先在 age = 0 中的树进行 global seeding
-                # 此分支只在 age=0 中的树进行 global seeding
-                selected_trees_index = random.sample(
-                    range(len(new_trees_in_forest)), selected_tree_num)
-
-                self._global_seeding_trees(new_trees_in_forest, selected_trees_index)
-
-            else:
-                # 所有的 age = 0 的树都参与全局播种
-                # 部分 age > 0 的候选森林中树参与全局播种
-                selected_old_tree_num = selected_tree_num - len(new_trees_in_forest)
-
-                selected_old_trees_index = random.sample(
-                    range(len(old_trees_in_candidate)), selected_old_tree_num)
-
-                self._global_seeding_trees(old_trees_in_candidate, selected_old_trees_index)
-
-                self._global_seeding_trees(new_trees_in_forest, range(len(new_trees_in_forest)))
+            self._global_seeding_trees(self.candidate_population,
+                                       selected_trees_index)
 
     def _global_seeding_trees(self, selected_trees, selected_trees_index):
         for index in selected_trees_index:
             temp_tree = selected_trees[index][:]
+
+            GSC = self.GSC
+            if temp_tree[self.dimension + 1] < self.best_tree[self.dimension + 1] * 0.75:
+                self.candidate_population.remove(temp_tree)
+                GSC = 2 * self.GSC
+
             selected_variables_index = random.sample(
-                range(1, self.dimension + 1), self.GSC)
+                range(1, self.dimension + 1), GSC)
             for i in selected_variables_index:
                 # The value of each selected variable will be negated
                 # (changing from 0 to 1 or vice versa)
@@ -277,6 +262,11 @@ class Forest (object):
             print("-------self.best_tree-----------")
             print(self.best_tree)
 
+
+    def __invisible_hand(self):
+       
+
+
     def _get_accuracy(self, feature_subset):
         '''
         Returns
@@ -286,7 +276,8 @@ class Forest (object):
         '''
 
         fitness = Evaluation.get_accuracy(
-            self.eval_function, feature_subset, self.dataset, self.method)
+            self.eval_function, feature_subset,
+            self.dataset, self.method)
 
 # print("-------feature_subset---------")
 # print(feature_subset)
