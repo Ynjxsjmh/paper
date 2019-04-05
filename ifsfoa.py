@@ -93,11 +93,11 @@ class Forest (object):
             init_num = math.floor((2 * self.dimension) / 10)
 
         high_feature = int(self.dimension * 3 / 4) * [1] + \
-            (self.dimension - int(self.dimension * 3 / 4)) * [0]          # 3/4
+            (self.dimension - int(self.dimension * 3 / 4)) * [0]    # 3/4
         mid_feature = int(self.dimension * 1 / 2) * [1] + \
-            (self.dimension - int(self.dimension * 1 / 2)) * [0]          # 1/2
+            (self.dimension - int(self.dimension * 1 / 2)) * [0]    # 1/2
         low_feature = int(self.dimension * 1 / 4) * [1] + \
-            (self.dimension - int(self.dimension * 1 / 4)) * [0]          # 1/4
+            (self.dimension - int(self.dimension * 1 / 4)) * [0]    # 1/4
 
         self.__init_ancestor(high_feature, init_num)
         self.__init_ancestor(mid_feature, init_num)
@@ -113,9 +113,10 @@ class Forest (object):
                 tree[1: self.dimension + 1])  # 计算每个 tree 的 fitness
             dimension_reduction = self._get_dimension_reduction_rate(
                 tree[1: self.dimension + 1])  # 计算每个 tree 的降维率
-            tree.append(fitness)
-            tree.append(dimension_reduction)
-            tree.append(self.id)
+            tree.append(fitness)              # 加入准确率
+            tree.append(dimension_reduction)  # 加入降维
+            tree.append(self.id)              # 加入 id
+            tree.append(self.id)              # 加入父子关系
             self.id += 1
             self.forest.append(tree)
             self.tree_groups.append(tree)
@@ -146,7 +147,7 @@ class Forest (object):
                     key=itemgetter(4, 5),
                     reverse=True)
                 index_according_to_accuracy = [row[0] for row in record]
-                best_n_to_remain = 3
+                best_n_to_remain = self.best_tree.count(1)
                 cols_to_use = index_according_to_accuracy[best_n_to_remain:]   # some best index remain unchanged
                 # Randomly choose LSC variables of the selected tree
                 if tree[self.dimension+1] >= 0.85 * self.best_tree[self.dimension+1]:  # good trees
@@ -173,11 +174,11 @@ class Forest (object):
                 temp_tree[1: self.dimension + 1])
             dimension_reduction = self._get_dimension_reduction_rate(
                 temp_tree[1: self.dimension + 1])  # 计算每个 tree 的降维率
-            temp_tree[self.dimension + 1] = fitness
-            temp_tree[self.dimension + 2] = dimension_reduction
-            temp_tree[self.dimension + 3] = self.id
+            temp_tree[self.dimension + 1] = fitness               # 更新准确率
+            temp_tree[self.dimension + 2] = dimension_reduction   # 更新降维
+            temp_tree[self.dimension + 3] = self.id               # 更新id
             self.id += 1
-            temp_tree.append(father_tree[self.dimension + 3])
+            temp_tree.append(father_tree[self.dimension + 3])     # 加入父子关系
             new_trees.append(temp_tree)
             self.tree_groups[temp_tree[self.dimension + 4]].append(temp_tree)
 
@@ -241,6 +242,9 @@ class Forest (object):
                     temp_tree[1: self.dimension + 1])  # 计算每个 tree 的降维率
                 temp_tree[self.dimension + 1] = fitness
                 temp_tree[self.dimension + 2] = dimension_reduction
+                temp_tree[self.dimension + 3] = self.id               # 更新id
+                self.id += 1
+                temp_tree.append(selected_trees[self.dimension + 3])  # 加入父子关系
                 self.forest.append(temp_tree)
 
     def _update_best_tree(self):
@@ -262,10 +266,18 @@ class Forest (object):
             print("-------self.best_tree-----------")
             print(self.best_tree)
 
-
     def __invisible_hand(self):
-       
+        self.past_best_trees.append(self.best_tree)
 
+        for tree in self.forest:
+            if tree[self.dimension + 3] == self.best_tree[self.dimension + 3] and tree[0] != 0:
+                self.forest.remove(tree)
+
+        for tree in self.candidate_population:
+            if tree[self.dimension + 3] == self.candidate_population[self.dimension + 3] and tree[0] != 0:
+                self.candidate_population.remove(tree)
+
+        self.best_tree = self.forest[0]
 
     def _get_accuracy(self, feature_subset):
         '''
@@ -303,14 +315,21 @@ class Forest (object):
             self._population_limiting()
             self._global_seeding()
             self._update_best_tree()
+            if i > 15 and (i-15) % 20 == 0:
+                self.__invisible_hand()
 
-        return self.best_tree
+        self.past_best_trees.append(self.best_tree)
 
+        self.past_best_trees = sorted(self.past_best_trees,
+                                      key=itemgetter(self.dimension + 1, self.dimension + 2),
+                                      reverse=True)
+
+        return self.past_best_trees[0]
 
 if __name__ == '__main__':
     start_time = time.time()
     #    file_path = r"C:\Users\Administrator\Desktop\11111\dataset\low\ionosphere.csv"
-    file_path = r".\binnn\dataset\low\ionosphere.csv"
+    file_path = r".\dataset\low\ionosphere.csv"
     forest = Forest(EvaluationFunction.ONE_NN, ValidationMethod.SEVEN_THREE,
                     file_path, 100, 50, 20, 15, 0.05)
     print(forest.evolution())
