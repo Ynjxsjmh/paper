@@ -117,19 +117,43 @@ class Forest (object):
             tree.append(self.id)
             self.id += 1
             self.forest.append(tree)
+            self.tree_groups.append(tree)
+
+    def __get_group_statistics(self, group):
+        record = [None] * (self.dimension + 2)
+        for i in range(1, self.dimension + 3):
+            count = 0
+            accuracy_sum = 0
+            dimension_reduction_sum = 0
+            for j in range(len(group)):
+                if group[j][i] == 1:
+                    count += 1
+                    accuracy_sum += group[j][self.dimension + 1]
+                    dimension_reduction_sum += group[j][self.dimension + 1]
+            record[i-1] = [i-1, count, accuracy_sum, dimension_reduction_sum, accuracy_sum/count, dimension_reduction_sum/sum]
+        return record
 
     def _local_seeding(self):
         new_trees = []
         for tree in self.forest:
             if tree[0] == 0:       # Perform local seeding on trees with Age 0
-                cols_to_use =      # some best index remain unchanged
+                group = self.tree_groups[tree[self.dimension + 4]]
+                record = self.__get_group_statistics(group)
+
+                record = sorted(
+                    record,
+                    key=itemgetter(4, 5),
+                    reverse=True)
+                index_according_to_accuracy = [row[0] for row in record]
+                best_n_to_remain = 3
+                cols_to_use = index_according_to_accuracy[best_n_to_remain:]   # some best index remain unchanged
                 # Randomly choose LSC variables of the selected tree
                 if tree[self.dimension+1] >= 0.85 * self.best_tree[self.dimension+1]:  # good trees
                     new_trees.extend(self.__plant_trees(tree, cols_to_use, 2 * self.LSC))
                 else:
                     new_trees.extend(self.__plant_trees(tree, cols_to_use, self.LSC))
 
-            # Increase the Age of all trees new generated ones in the local
+            # Increase the Age of all trees except new generated ones in the local
             # seeding stage by 1
             tree[0] = tree[0] + 1
 
@@ -137,6 +161,8 @@ class Forest (object):
 
     def __plant_trees(self, father_tree, cols_to_use, LSC):
         new_trees = []
+        if LSC > len(cols_to_use):
+            LSC = len(cols_to_use)
         selected_index = random.sample(cols_to_use, LSC)
         for index in selected_index:
             temp_tree = father_tree[:]
@@ -149,25 +175,33 @@ class Forest (object):
             temp_tree[self.dimension + 1] = fitness
             temp_tree[self.dimension + 2] = dimension_reduction
             temp_tree[self.dimension + 3] = self.id
-            temp_tree.append(father_tree[self.dimension + 3])
             self.id += 1
+            temp_tree.append(father_tree[self.dimension + 3])
             new_trees.append(temp_tree)
+            self.tree_groups[temp_tree[self.dimension + 4]].append(temp_tree)
 
         return new_trees
 
     def _population_limiting(self):
         for tree in self.forest:       # Trees with “Age” bigger than “life time” parameter
             if tree[0] > self.max_life_time:
+                self.forest.remove(tree)
+            if tree[0] > self.life_time_limit:
                 self.candidate_population.append(tree)
                 self.forest.remove(tree)
+
+        for tree in self.candidate_population:
+            if tree[0] > self.max_life_time:
+                self.candidate_population.remove(tree)
 
         # The extra trees that exceed “area limit” parameter after sorting the
         # trees according to their fitness value will be dropped
         if len(self.forest) > self.area_limit:
             # sort the forest according to the fitness from high to low
             self.forest = sorted(
-                self.forest, key=itemgetter(
-                    self.dimension + 1, self.dimension + 2), reverse=True)
+                self.forest,
+                key=itemgetter(self.dimension + 1, self.dimension + 2),
+                reverse=True)
             # 0~area_limit-1 : total area_limit
             self.forest = self.forest[:self.area_limit]
 
@@ -287,6 +321,6 @@ if __name__ == '__main__':
     #    file_path = r"C:\Users\Administrator\Desktop\11111\dataset\low\ionosphere.csv"
     file_path = r".\binnn\dataset\low\ionosphere.csv"
     forest = Forest(EvaluationFunction.ONE_NN, ValidationMethod.SEVEN_THREE,
-                    file_path, 100, 50, 15, 0.05)
+                    file_path, 100, 50, 20, 15, 0.05)
     print(forest.evolution())
     print("--- %s seconds ---" % (time.time() - start_time))
