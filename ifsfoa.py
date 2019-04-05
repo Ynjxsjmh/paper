@@ -71,6 +71,11 @@ class Forest (object):
         self.id = 0
 
         self.tree_groups = []
+        '''
+        record = [feature_index, count, accuracy_sum, dimension_reduction_sum, accuracy_average, dimension_reduction_average]
+        tree_groups_record = [[record, record], []]
+        '''
+        self.tree_groups_record = []
 
     def _initialize_forest(self):
         '''
@@ -119,10 +124,38 @@ class Forest (object):
             tree.append(self.id)              # 加入父子关系
             self.id += 1
             self.forest.append(tree)
-            self.tree_groups.append(tree)
+            self.tree_groups.append([tree])   # 加入初始族群
+
+            record_list = []
+            for i in range(self.dimension):
+                record = [i] + [0] * 5        # 每个 record 有 6 个属性
+                record_list.append(record)
+
+            self.tree_groups_record.append(record_list)  # 有几个 group 就有几个 record_list
+            self.__add_tree_into_group_record(tree)
+
+    def __add_tree_into_group_record(self, tree):
+        father_tree_id = tree[self.dimension + 4]
+        group_record_list = self.tree_groups_record[father_tree_id]
+
+        # 将 group record 按 feature 排序
+        # group record 里有 self.dimension 个 record
+        if group_record_list[0] != None:
+            group_record_list = sorted(group_record_list, key=itemgetter(0))
+
+        tree_info = tree[1:self.dimension+3]
+
+        for feature_index in range(self.dimension):
+            if feature_index == 1:
+                group_record_list[feature_index][1] += 1  # count ++
+                group_record_list[feature_index][2] += tree_info[self.dimension]    # add accuracy
+                group_record_list[feature_index][3] += tree_info[self.dimension+1]  # add dimension_reduction
+                group_record_list[feature_index][4] = group_record_list[feature_index][2] / group_record_list[feature_index][1]  # accuracy average
+                group_record_list[feature_index][5] = group_record_list[feature_index][3] / group_record_list[feature_index][1]  # dimension_reduction average
 
     def __get_group_statistics(self, group):
-        record = [None] * (self.dimension + 2)
+        # 获得族群统计信息
+        record_list = [None] * (self.dimension + 2)
         for i in range(1, self.dimension + 3):
             count = 0
             accuracy_sum = 0
@@ -132,21 +165,30 @@ class Forest (object):
                     count += 1
                     accuracy_sum += group[j][self.dimension + 1]
                     dimension_reduction_sum += group[j][self.dimension + 1]
-            record[i-1] = [i-1, count, accuracy_sum, dimension_reduction_sum, accuracy_sum/count, dimension_reduction_sum/sum]
-        return record
+
+            accuracy_average = 0
+            dimension_reduction_average = 0
+
+            if count != 0:
+                accuracy_average = accuracy_sum/count
+                dimension_reduction_average = dimension_reduction_sum/count
+
+            record_list[i-1] = [i-1, count, accuracy_sum, dimension_reduction_sum, accuracy_average, dimension_reduction_average]
+        return record_list
 
     def _local_seeding(self):
         new_trees = []
         for tree in self.forest:
             if tree[0] == 0:       # Perform local seeding on trees with Age 0
-                group = self.tree_groups[tree[self.dimension + 4]]
-                record = self.__get_group_statistics(group)
+##                group = self.tree_groups[tree[self.dimension + 4]]
+##                record_list = self.__get_group_statistics(group)
+                record_list = self.tree_groups_record[tree[self.dimension + 4]]
 
-                record = sorted(
-                    record,
+                record_list = sorted(
+                    record_list,
                     key=itemgetter(4, 5),
                     reverse=True)
-                index_according_to_accuracy = [row[0] for row in record]
+                index_according_to_accuracy = [row[0] for row in record_list]
                 best_n_to_remain = self.best_tree.count(1)
                 cols_to_use = index_according_to_accuracy[best_n_to_remain:]   # some best index remain unchanged
                 # Randomly choose LSC variables of the selected tree
@@ -180,7 +222,8 @@ class Forest (object):
             self.id += 1
             temp_tree.append(father_tree[self.dimension + 3])     # 加入父子关系
             new_trees.append(temp_tree)
-            self.tree_groups[temp_tree[self.dimension + 4]].append(temp_tree)
+            self.tree_groups[temp_tree[self.dimension + 4]].append(temp_tree) # 加入族群
+            self.__add_tree_into_group_record(temp_tree)
 
         return new_trees
 
@@ -190,7 +233,8 @@ class Forest (object):
                 self.forest.remove(tree)
             if tree[0] > self.life_time_limit:
                 self.candidate_population.append(tree)
-                self.forest.remove(tree)
+                if self.forest.count(tree) > 0:
+                    self.forest.remove(tree)
 
         for tree in self.candidate_population:
             if tree[0] > self.max_life_time:
@@ -222,6 +266,9 @@ class Forest (object):
                                        selected_trees_index)
 
     def _global_seeding_trees(self, selected_trees, selected_trees_index):
+        """ Global seeding 是对 candidate population 中 tranfer rate 个树，每颗树改变 GSC 个参数
+            
+        """
         for index in selected_trees_index:
             temp_tree = selected_trees[index][:]
 
@@ -244,8 +291,10 @@ class Forest (object):
                 temp_tree[self.dimension + 2] = dimension_reduction
                 temp_tree[self.dimension + 3] = self.id               # 更新id
                 self.id += 1
-                temp_tree.append(selected_trees[self.dimension + 3])  # 加入父子关系
+                temp_tree.append(selected_trees[index][self.dimension + 3])        # 加入父子关系
                 self.forest.append(temp_tree)
+                self.tree_groups[temp_tree[self.dimension + 4]].append(temp_tree)  # 加入族群
+                self.__add_tree_into_group_record(temp_tree)
 
     def _update_best_tree(self):
         # sort the forest according to the fitness from high to low
@@ -270,11 +319,12 @@ class Forest (object):
         self.past_best_trees.append(self.best_tree)
 
         for tree in self.forest:
+            # 如果是和 best tree 一个族群的
             if tree[self.dimension + 3] == self.best_tree[self.dimension + 3] and tree[0] != 0:
                 self.forest.remove(tree)
 
         for tree in self.candidate_population:
-            if tree[self.dimension + 3] == self.candidate_population[self.dimension + 3] and tree[0] != 0:
+            if tree[self.dimension + 3] == self.best_tree[self.dimension + 3] and tree[0] != 0:
                 self.candidate_population.remove(tree)
 
         self.best_tree = self.forest[0]
@@ -311,6 +361,7 @@ class Forest (object):
         self._initialize_forest()
 
         for i in range(self.max_iterations):
+            print("iteration round "+ str(i))
             self._local_seeding()
             self._population_limiting()
             self._global_seeding()
@@ -328,8 +379,8 @@ class Forest (object):
 
 if __name__ == '__main__':
     start_time = time.time()
-    #    file_path = r"C:\Users\Administrator\Desktop\11111\dataset\low\ionosphere.csv"
-    file_path = r".\dataset\low\ionosphere.csv"
+    #    file_path = r"C:\Users\Administrator\Desktop\11111\dataset\low\heart.csv"
+    file_path = r".\dataset\high\srbct.csv"
     forest = Forest(EvaluationFunction.ONE_NN, ValidationMethod.SEVEN_THREE,
                     file_path, 100, 50, 20, 15, 0.05)
     print(forest.evolution())
