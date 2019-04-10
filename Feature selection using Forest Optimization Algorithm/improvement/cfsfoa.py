@@ -140,7 +140,7 @@ class Forest (object):
 
         # 将 group record 按 feature 排序
         # group record 里有 self.dimension 个 record
-        if group_record_list[0] != None:
+        if group_record_list[0] is not None:
             group_record_list = sorted(group_record_list, key=itemgetter(0))
 
         tree_info = tree[1:self.dimension+3]
