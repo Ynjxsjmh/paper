@@ -1,0 +1,9 @@
+* About
+This subfolder uses =concurrent.futures= modules to parallel task.
+
+Used in three functions:
+1. =local_seeding=
+2. =population_limiting=
+3. =global_seeding=
+
+For the effectiveness difference between =ThreadPoolExecutor= and =ProcessPoolExecutor=, you can try [compare.py](https://github.com/Ynjxsjmh/labtorary/blob/master/Python3/concurrent/compare.py) and edit the range in count function.
