@@ -8,6 +8,7 @@ using namespace std;
 
 
 class Node {
+public:
     string edge;
     vector<set<string> > set_cluster_before_simplified;
     vector<set<string> > set_cluster_after_simplified;
