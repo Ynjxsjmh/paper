@@ -160,7 +160,7 @@ set<string> CHSTree::getExtensionSet(vector<set<string> > set_cluster) {
             int frequency = 0;
 
             for (string e : min_potential) {
-                for (int i = 0; i < set_cluster; i++) {
+                for (int i = 0; i < set_cluster.size(); i++) {
                     if (set_cluster[i].count(e)) {
                         frequency++;
                     }
