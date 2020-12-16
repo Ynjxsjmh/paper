@@ -1,3 +1,5 @@
+#include <climits>
+
 #include "chs.h"
 
 CHSTree::CHSTree(vector<set<string> > set_cluster) {
