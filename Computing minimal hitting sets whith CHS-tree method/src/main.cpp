@@ -2,6 +2,7 @@
 #include <string>
 #include <set>
 #include <vector>
+#include <random>
 #include <algorithm>
 
 #include "chs.h"
@@ -88,6 +89,38 @@ void userInput() {
 
 void randomOne() {
     vector<set<string> > set_cluster;
+    int cluster_size;
+    int min_val;
+    int max_val;
+    int max_num;
+
+    cout << "How many sets do you want to generate: ";
+    cin >> cluster_size;
+
+    cout << "What's your data range (space seperated): ";
+    cin >> min_val >> max_val;
+
+    cout << "What's the maximum number of elements in a set: ";
+    cin >> max_num;
+
+    for (int i = 0; i < cluster_size; i++) {
+        set<string> s;
+
+        random_device                  rand_dev;
+        mt19937                        generator(rand_dev());
+        uniform_int_distribution<int>  value_distr(min_val, max_val);
+        uniform_int_distribution<int>  set_distr(1, max_num);
+
+        int set_size = set_distr(generator);
+
+        while (s.size() < set_size) {
+            s.insert(to_string(value_distr(generator)));
+        }
+
+        set_cluster.push_back(s);
+    }
+
+    cal(set_cluster);
 }
 
 void menu() {
