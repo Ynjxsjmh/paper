@@ -26,6 +26,7 @@ private:
     void generateTree(Node* root);
     void printSet(set<string> s, string ending);
     void printSetCluster(vector<set<string> > set_cluster);
+    void printNode(Node* node);
     vector<set<string> > simplifySetCuster(vector<set<string> > set_cluster);
     vector<set<string> > getMinPotential(vector<set<string> > set_cluster);
     set<string> getExtensionSet(vector<set<string> > set_cluster);

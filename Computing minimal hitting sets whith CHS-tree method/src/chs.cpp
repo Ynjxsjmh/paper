@@ -41,6 +41,15 @@ void CHSTree::printSetCluster(vector<set<string> > set_cluster) {
     std::cout << "}" << std::endl;
 }
 
+void CHSTree::printNode(Node* node) {
+    std::cout << "====================" << std::endl;
+    std::cout << node->edge << std::endl;
+    printSetCluster(node->set_cluster_before_simplified);
+    printSetCluster(node->set_cluster_after_simplified);
+    printSet(node->extension_set, "\n");
+    std::cout << "====================" << std::endl;
+}
+
 
 /**
  * 生成 CHS 树
