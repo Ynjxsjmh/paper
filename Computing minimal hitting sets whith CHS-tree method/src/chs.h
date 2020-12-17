@@ -23,8 +23,11 @@ public:
     ~CHSTree();
 
     void visualize(string filename);
+    void printMinimalHittingSets();
 
 private:
+    void getMinimalHittingSets(Node* node, set<string>& tempResult, vector<set<string> >& result);
+
     void generateTree(Node* root);
     void destroyTree(Node* node);
 

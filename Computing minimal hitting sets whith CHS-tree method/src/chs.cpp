@@ -89,6 +89,29 @@ void CHSTree::writeEdge(std::ofstream& outfile, vector<Node*> curNodes, int curN
     }
 }
 
+void CHSTree::printMinimalHittingSets() {
+    vector<set<string> > result;
+    set<string> tempResult;
+
+    getMinimalHittingSets(root, tempResult, result);
+
+    std::cout << "Minimal hitting sets: " << std::endl;
+    printSetCluster(result);
+}
+
+void CHSTree::getMinimalHittingSets(Node* node, set<string>& tempResult, vector<set<string> >& result) {
+    if (node->set_cluster_before_simplified.size() <= 0) {
+        result.push_back(tempResult);
+        return;
+    }
+
+    for (Node* child : node->children) {
+        tempResult.insert(child->edge);
+        getMinimalHittingSets(child, tempResult, result);
+        tempResult.erase(child->edge);
+    }
+}
+
 
 void CHSTree::printSet(set<string> s, string ending="") {
     std::cout << "{";
