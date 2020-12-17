@@ -9,7 +9,7 @@ CHSTree::CHSTree(vector<set<string> > set_cluster) {
     root->edge = "";
     root->set_cluster_before_simplified = set_cluster;
     root->set_cluster_after_simplified = simplifySetCuster(set_cluster);
-    root->extension_set = getExtensionSet(set_cluster);
+    root->extension_set = getExtensionSet(root->set_cluster_after_simplified);
 
     generateTree(root);
 }
@@ -69,7 +69,7 @@ void CHSTree::generateTree(Node* cur) {
         child->edge = a;
         child->set_cluster_before_simplified = set_cluster_copied;
         child->set_cluster_after_simplified = simplifySetCuster(set_cluster_copied);
-        child->extension_set = getExtensionSet(set_cluster_copied);
+        child->extension_set = getExtensionSet(child->set_cluster_after_simplified);
 
         cur->children.push_back(child);
 
