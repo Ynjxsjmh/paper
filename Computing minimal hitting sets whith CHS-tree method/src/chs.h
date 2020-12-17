@@ -24,6 +24,7 @@ public:
 
 private:
     void generateTree(Node* root);
+    void destroyTree(Node* node);
     void printSet(set<string> s, string ending);
     void printSetCluster(vector<set<string> > set_cluster);
     void printNode(Node* node);

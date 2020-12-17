@@ -15,6 +15,7 @@ CHSTree::CHSTree(vector<set<string> > set_cluster) {
 }
 
 CHSTree::~CHSTree() {
+    destroyTree(root);
 }
 
 
@@ -82,6 +83,16 @@ void CHSTree::generateTree(Node* cur) {
         cur->children.push_back(child);
 
         generateTree(child);
+    }
+}
+
+void CHSTree::destroyTree(Node* node) {
+    if (node != nullptr){
+        for (Node* child : node->children) {
+            destroyTree(child);
+        }
+
+        delete node;
     }
 }
 
