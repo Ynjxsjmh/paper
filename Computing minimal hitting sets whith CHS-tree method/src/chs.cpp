@@ -84,8 +84,8 @@ void CHSTree::generateTree(Node* root) {
  */
 vector<set<string> > CHSTree::eraseElementsFromSetCuster(set<string> elements, vector<set<string> > set_cluster) {
     for (string element : elements) {
-        for(iterator it = begin; it != end(set_cluster);) {
-            if (*it.count(element) > 0) {
+        for(vector<set<string> >::iterator it = set_cluster.begin(); it != set_cluster.end();) {
+            if ((*it).count(element) > 0) {
                 it = set_cluster.erase(it);
             } else {
                 ++it;
