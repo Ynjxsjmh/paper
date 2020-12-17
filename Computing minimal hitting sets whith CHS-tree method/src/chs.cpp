@@ -51,15 +51,15 @@ void CHSTree::printSetCluster(vector<set<string> > set_cluster) {
  *
  * @param Node* 根节点
  */
-void CHSTree::generateTree(Node* root) {
-    if (root->set_cluster_before_simplified.size() <= 0) {
+void CHSTree::generateTree(Node* cur) {
+    if (cur->set_cluster_before_simplified.size() <= 0) {
         return;
     }
 
-    vector<set<string> > set_cluster = root->set_cluster_after_simplified;
+    vector<set<string> > set_cluster = cur->set_cluster_after_simplified;
     set<string> elements;
 
-    for (string a : root->extension_set) {
+    for (string a : cur->extension_set) {
         vector<set<string> > set_cluster_copied = set_cluster;
 
         elements.insert(a);
@@ -71,7 +71,7 @@ void CHSTree::generateTree(Node* root) {
         child->set_cluster_after_simplified = simplifySetCuster(set_cluster_copied);
         child->extension_set = getExtensionSet(set_cluster_copied);
 
-        root->children.push_back(child);
+        cur->children.push_back(child);
 
         generateTree(child);
     }
