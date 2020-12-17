@@ -1,4 +1,5 @@
 #include <climits>
+#include <fstream>
 #include <iostream>
 
 #include "chs.h"
@@ -16,6 +17,76 @@ CHSTree::CHSTree(vector<set<string> > set_cluster) {
 
 CHSTree::~CHSTree() {
     destroyTree(root);
+}
+
+
+void CHSTree::visualize(string filename) {
+    string filepath = "./output/" + filename + ".dot";
+
+    std::ofstream outfile(filepath);
+    outfile << "digraph G {\nnode [shape = record];\n\n";
+
+    write2dot(outfile);
+
+    outfile << "}";
+    outfile.close();
+}
+
+
+void CHSTree::write2dot(std::ofstream& outfile) {
+    int nodeID = 0;
+    vector<Node*> curNodes;
+    curNodes.push_back(root);
+
+    while (!curNodes.empty()) {
+        vector<Node*> nextNodes;
+
+        writeEdge(outfile, curNodes, nodeID);
+
+        int beginID = nodeID;
+        for (Node* node : curNodes) {
+            writeNode(outfile, node, nodeID);
+            nodeID += 1;
+
+            for (Node* child : node->children) {
+                nextNodes.push_back(child);
+            }
+        }
+
+        curNodes = nextNodes;
+    }
+}
+
+void CHSTree::writeNode(std::ofstream& outfile, Node* curNode, int curNodeID) {
+    string label = "\"\\{";
+
+    set<std::string>::iterator setIt = curNode->extension_set.begin();
+    for (size_t i = 0; i < curNode->extension_set.size(); i++) {
+        label += (i ? ", " : "");
+        label += *setIt;
+        setIt++;
+    }
+
+    label += "\\}\"";
+
+    string node = to_string(curNodeID) + "[label=" + label + "]\n";
+    outfile << node;
+}
+
+
+void CHSTree::writeEdge(std::ofstream& outfile, vector<Node*> curNodes, int curNodeID) {
+    int previousChildrenNum = 0;
+
+    for (int i = 0; i < curNodes.size(); i++) {
+        for (int j = 0; j < curNodes[i]->children.size(); j++) {
+            int childNodeID = curNodeID + curNodes.size() - i + j + previousChildrenNum;
+            string edge = to_string(curNodeID) + "->" + to_string(childNodeID) + "[label=" + curNodes[i]->children[j]->edge + "]\n";
+            outfile << edge;
+        }
+
+        previousChildrenNum += curNodes[i]->children.size();
+        curNodeID++;
+    }
 }
 
 

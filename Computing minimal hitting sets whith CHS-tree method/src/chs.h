@@ -22,12 +22,20 @@ public:
     CHSTree(vector<set<string> > set_cluster);
     ~CHSTree();
 
+    void visualize(string filename);
+
 private:
     void generateTree(Node* root);
     void destroyTree(Node* node);
+
+    void write2dot(std::ofstream& outfile);
+    void writeNode(std::ofstream& outfile, Node* curNode, int curNodeID);
+    void writeEdge(std::ofstream& outfile, vector<Node*> curNodes, int curNodeID);
+
     void printSet(set<string> s, string ending);
     void printSetCluster(vector<set<string> > set_cluster);
     void printNode(Node* node);
+
     vector<set<string> > simplifySetCuster(vector<set<string> > set_cluster);
     vector<set<string> > getMinPotential(vector<set<string> > set_cluster);
     set<string> getExtensionSet(vector<set<string> > set_cluster);
