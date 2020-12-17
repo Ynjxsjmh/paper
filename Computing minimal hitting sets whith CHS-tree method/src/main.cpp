@@ -35,6 +35,7 @@ void cal(vector<set<string> > set_cluster) {
     printSetCluster(set_cluster);
 
     chs->visualize("result");
+    chs->printMinimalHittingSets();
 
     delete chs;
 }
