@@ -217,8 +217,8 @@ set<string> CHSTree::getExtensionSet(vector<set<string> > set_cluster) {
             frequencies.push_back(frequency);
         }
 
-        int min_idx = min_element(frequencies.begin(), frequencies.end()) - frequencies.begin();
+        int max_frequency_idx = max_element(frequencies.begin(), frequencies.end()) - frequencies.begin();
 
-        return min_potentials[min_idx];
+        return min_potentials[max_frequency_idx];
     }
 }
