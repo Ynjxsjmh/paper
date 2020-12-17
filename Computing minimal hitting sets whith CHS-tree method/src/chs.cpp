@@ -4,6 +4,8 @@
 #include "chs.h"
 
 CHSTree::CHSTree(vector<set<string> > set_cluster) {
+    root = new Node();
+
     root->edge = "";
     root->set_cluster_before_simplified = set_cluster;
     root->set_cluster_after_simplified = simplifySetCuster(set_cluster);
@@ -63,7 +65,7 @@ void CHSTree::generateTree(Node* root) {
         elements.insert(a);
         set_cluster_copied = eraseElementsFromSetCuster(elements, set_cluster_copied);
 
-        Node* child;
+        Node* child = new Node();
         child->edge = a;
         child->set_cluster_before_simplified = set_cluster_copied;
         child->set_cluster_after_simplified = simplifySetCuster(set_cluster_copied);
