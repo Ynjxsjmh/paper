@@ -112,7 +112,7 @@ vector<set<string> > CHSTree::eraseElementsFromSetCuster(set<string> elements, v
 vector<set<string> > CHSTree::simplifySetCuster(vector<set<string> > set_cluster) {
     vector<set<string> > set_cluster_after_simplified;
 
-    for (int i = 0; i < set_cluster.size() - 1; i++) {
+    for (int i = 0; i < set_cluster.size(); i++) {
         // i 是否为 j 的超集
         int i_includes_j = 0;
 
