@@ -60,15 +60,14 @@ void CHSTree::generateTree(Node* cur) {
     set<string> elements;
 
     for (string a : cur->extension_set) {
-        vector<set<string> > set_cluster_copied = set_cluster;
-
+        vector<set<string> > set_cluster_trimmed = eraseSetContainsElementFromSetCuster(a, set_cluster);
+        set_cluster_trimmed = eraseElementsFromSetCuster(elements, set_cluster_trimmed);
         elements.insert(a);
-        set_cluster_copied = eraseElementsFromSetCuster(elements, set_cluster_copied);
 
         Node* child = new Node();
         child->edge = a;
-        child->set_cluster_before_simplified = set_cluster_copied;
-        child->set_cluster_after_simplified = simplifySetCuster(set_cluster_copied);
+        child->set_cluster_before_simplified = set_cluster_trimmed;
+        child->set_cluster_after_simplified = simplifySetCuster(set_cluster_trimmed);
         child->extension_set = getExtensionSet(child->set_cluster_after_simplified);
 
         cur->children.push_back(child);
@@ -78,7 +77,26 @@ void CHSTree::generateTree(Node* cur) {
 }
 
 /**
- * 从集合簇中去除包含某些元素的集合
+ * 从集合簇中去除包含某个元素的集合
+ *
+ * @param element 目标元素
+ * @param set_cluster 集合簇
+ * @return 去除所有包含该元素集合后的集合簇
+ */
+vector<set<string> > CHSTree::eraseSetContainsElementFromSetCuster(string element, vector<set<string> > set_cluster) {
+    for(vector<set<string> >::iterator it = set_cluster.begin(); it != set_cluster.end();) {
+        if ((*it).count(element) > 0) {
+            it = set_cluster.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    return set_cluster;
+}
+
+/**
+ * 从集合簇中所有集合去除这些某些元素
  *
  * @param elements 待去除的元素集合
  * @param set_cluster 集合簇
@@ -86,11 +104,9 @@ void CHSTree::generateTree(Node* cur) {
  */
 vector<set<string> > CHSTree::eraseElementsFromSetCuster(set<string> elements, vector<set<string> > set_cluster) {
     for (string element : elements) {
-        for(vector<set<string> >::iterator it = set_cluster.begin(); it != set_cluster.end();) {
+        for(vector<set<string> >::iterator it = set_cluster.begin(); it != set_cluster.end(); ++it) {
             if ((*it).count(element) > 0) {
-                it = set_cluster.erase(it);
-            } else {
-                ++it;
+                (*it).erase(element);
             }
         }
     }

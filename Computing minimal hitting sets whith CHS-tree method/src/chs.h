@@ -29,6 +29,7 @@ private:
     vector<set<string> > simplifySetCuster(vector<set<string> > set_cluster);
     vector<set<string> > getMinPotential(vector<set<string> > set_cluster);
     set<string> getExtensionSet(vector<set<string> > set_cluster);
+    vector<set<string> > eraseSetContainsElementFromSetCuster(string element, vector<set<string> > set_cluster);
     vector<set<string> > eraseElementsFromSetCuster(set<string> elements, vector<set<string> > set_cluster);
     Node *root;
 };
