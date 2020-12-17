@@ -1,4 +1,5 @@
 #include <climits>
+#include <iostream>
 
 #include "chs.h"
 
@@ -12,6 +13,30 @@ CHSTree::CHSTree(vector<set<string> > set_cluster) {
 }
 
 CHSTree::~CHSTree() {
+}
+
+
+void CHSTree::printSet(set<string> s, string ending="") {
+    std::cout << "{";
+
+    set<std::string>::iterator setIt = s.begin();
+    for (size_t j = 0; j < s.size(); j++) {
+        std::cout << (j ? ", " : "") << *setIt;
+        setIt++;
+    }
+
+    std::cout << "}" << ending;
+}
+
+void CHSTree::printSetCluster(vector<set<string> > set_cluster) {
+    std::cout << "{";
+
+    for (size_t i = 0; i < set_cluster.size(); i++) {
+        std::cout << (i ? ", " : "");
+        printSet(set_cluster[i]);
+    }
+
+    std::cout << "}" << std::endl;
 }
 
 
