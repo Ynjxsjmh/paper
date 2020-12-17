@@ -180,7 +180,9 @@ vector<set<string> > CHSTree::getMinPotential(vector<set<string> > set_cluster) 
 set<string> CHSTree::getExtensionSet(vector<set<string> > set_cluster) {
     vector<set<string> > min_potentials = getMinPotential(set_cluster);
 
-    if (min_potentials.size() == 1) {
+    if (min_potentials.size() == 0) {
+        return {};
+    } else if (min_potentials.size() == 1) {
         return min_potentials[0];
     } else {
         vector<int> frequencies;
